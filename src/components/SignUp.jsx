@@ -8,7 +8,8 @@ import useSignIn from "../hooks/useSignIn";
 import useAuthStorage from "../hooks/useAuthStorage";
 import { useNavigate } from "react-router";
 import { useEffect } from "react";
-import { useApolloClient } from "@apollo/client";
+import { useApolloClient, useMutation } from "@apollo/client";
+import { CREATE_USER } from "../graphql/mutations";
 
 const styles = StyleSheet.create({
   button: {
@@ -23,7 +24,7 @@ const styles = StyleSheet.create({
   },
 });
 
-const SignInForm = ({ onSubmit }) => {
+const SignUpForm = ({ onSubmit }) => {
   return (
     <>
       <View style={{ padding: 15, backgroundColor: "#FFF" }}>
@@ -33,9 +34,14 @@ const SignInForm = ({ onSubmit }) => {
           placeholder="Password"
           secureTextEntry={true}
         />
+        <FormikTextInput
+          name={"passwordConfirm"}
+          placeholder="Password Confirmation"
+          secureTextEntry={true}
+        />
         <Pressable onPress={onSubmit} style={styles.button}>
           <Text style={styles.buttonText} fontWeight={"bold"}>
-            Sign in
+            Sign Up
           </Text>
         </Pressable>
       </View>
@@ -44,11 +50,23 @@ const SignInForm = ({ onSubmit }) => {
 };
 
 const validationSchema = yup.object().shape({
-  username: yup.string().required("Username is required"),
-  password: yup.string().required("Password is required"),
+  username: yup
+    .string()
+    .min(5, "Username must more than 5")
+    .max(30, "Username must lss than 30")
+    .required("Username is required"),
+  password: yup
+    .string()
+    .min(5, "Password must more than 5")
+    .max(30, "Password must lss than 30")
+    .required("Password is required"),
+  passwordConfirm: yup
+    .string()
+    .oneOf([yup.ref("password"), null])
+    .required("Password confirm is required"),
 });
 
-export const SignInContainer = ({ onSubmit }) => {
+export const SignUpContainer = ({ onSubmit }) => {
   const initialValues = {
     username: "",
     password: "",
@@ -60,35 +78,26 @@ export const SignInContainer = ({ onSubmit }) => {
       onSubmit={onSubmit}
       validationSchema={validationSchema}
     >
-      {({ handleSubmit }) => <SignInForm onSubmit={handleSubmit} />}
+      {({ handleSubmit }) => <SignUpForm onSubmit={handleSubmit} />}
     </Formik>
   );
 };
 
-const SignIn = () => {
-  const [signIn, result] = useSignIn();
-  const authStorage = useAuthStorage();
+const SignUp = () => {
   const navigate = useNavigate();
   const apolloClient = useApolloClient();
 
-  useEffect(() => {
-    authStorage
-      .getAccessToken()
-      .then((token) => token.length > 0 && navigate("/"));
-  }, []);
-
+  const [muttaaa] = useMutation(CREATE_USER);
   const onSubmit = async (values) => {
     const { username, password } = values;
 
     try {
-      const data = await signIn({ username, password });
-      await authStorage.setAccessToken(data.authenticate.accessToken);
+      await muttaaa({ variables: { user: { username, password } } });
       navigate("/");
-      apolloClient.resetStore();
     } catch (error) {
-      console.log("ini error bro", error);
+      console.log(error);
     }
   };
-  return <SignInContainer onSubmit={onSubmit} />;
+  return <SignUpContainer onSubmit={onSubmit} />;
 };
-export default SignIn;
+export default SignUp;
